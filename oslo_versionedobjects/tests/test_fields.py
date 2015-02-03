@@ -331,7 +331,7 @@ class TestObject(TestField):
     def setUp(self):
         super(TestObject, self).setUp()
 
-        class TestableObject(obj_base.NovaObject):
+        class TestableObject(obj_base.VersionedObject):
             fields = {
                 'uuid': fields.StringField(),
                 }
@@ -342,7 +342,7 @@ class TestObject(TestField):
                 # just want to make sure the right type of object is re-created
                 return value.__class__.__name__ == TestableObject.__name__
 
-        class OtherTestableObject(obj_base.NovaObject):
+        class OtherTestableObject(obj_base.VersionedObject):
             pass
 
         test_inst = TestableObject()

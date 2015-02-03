@@ -44,7 +44,7 @@ import testtools
 #from nova.network import manager as network_manager
 #from nova import objects
 from oslo_versionedobjects import base as objects_base
-from oslo_versionedobjects.tests import fixtures as nova_fixtures
+from oslo_versionedobjects.tests import fixtures as versionedobjects_fixtures
 from oslo_versionedobjects import utils
 
 
@@ -53,7 +53,7 @@ CONF = cfg.CONF
 # CONF.set_override('use_stderr', False)
 
 logging.register_options(CONF)
-logging.setup(CONF, 'nova')
+logging.setup(CONF, 'versionedobjects')
 
 # NOTE(comstud): Make sure we have all of the objects loaded. We do this
 # at module import time, because we may be using mock decorators in our
@@ -136,18 +136,18 @@ class TestCase(testtools.TestCase):
     def setUp(self):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
-        self.useFixture(nova_fixtures.Timeout(
+        self.useFixture(versionedobjects_fixtures.Timeout(
             os.environ.get('OS_TEST_TIMEOUT', 0),
             self.TIMEOUT_SCALING_FACTOR))
 
         self.useFixture(fixtures.NestedTempfile())
         self.useFixture(fixtures.TempHomeDir())
-        self.useFixture(nova_fixtures.TranslationFixture())
+        self.useFixture(versionedobjects_fixtures.TranslationFixture())
         self.useFixture(logging_error.get_logging_handle_error_fixture())
 
-        self.useFixture(nova_fixtures.OutputStreamCapture())
+        self.useFixture(versionedobjects_fixtures.OutputStreamCapture())
 
-        self.useFixture(nova_fixtures.StandardLogging())
+        self.useFixture(versionedobjects_fixtures.StandardLogging())
 
         # NOTE(sdague): because of the way we were using the lock
         # wrapper we eneded up with a lot of tests that started
@@ -168,21 +168,21 @@ class TestCase(testtools.TestCase):
                                 group='oslo_concurrency')
 
         # self.useFixture(config_fixture.ConfFixture(CONF))
-        # self.useFixture(nova_fixtures.RPCFixture('nova.test'))
+        # self.useFixture(versionedobjects_fixtures.RPCFixture('nova.test'))
 
         # if self.USES_DB:
-        #     self.useFixture(nova_fixtures.Database())
+        #     self.useFixture(versionedobjects_fixtures.Database())
 
         # NOTE(blk-u): WarningsFixture must be after the Database fixture
         # because sqlalchemy-migrate messes with the warnings filters.
-        self.useFixture(nova_fixtures.WarningsFixture())
+        self.useFixture(versionedobjects_fixtures.WarningsFixture())
 
         # NOTE(danms): Make sure to reset us back to non-remote objects
         # for each test to avoid interactions. Also, backup the object
         # registry.
-        objects_base.NovaObject.indirection_api = None
+        objects_base.VersionedObject.indirection_api = None
         self._base_test_obj_backup = copy.copy(
-            objects_base.NovaObject._obj_classes)
+            objects_base.VersionedObject._obj_classes)
         self.addCleanup(self._restore_obj_registry)
 
         # NOTE(mnaser): All calls to utils.is_neutron() are cached in
@@ -197,7 +197,7 @@ class TestCase(testtools.TestCase):
         self.useFixture(fixtures.EnvironmentVariable('http_proxy'))
 
     def _restore_obj_registry(self):
-        objects_base.NovaObject._obj_classes = self._base_test_obj_backup
+        objects_base.VersionedObject._obj_classes = self._base_test_obj_backup
 
     def _clear_attrs(self):
         # Delete attributes that don't start with _ so they don't pin
@@ -214,7 +214,7 @@ class TestCase(testtools.TestCase):
 
     def start_service(self, name, host=None, **kwargs):
         svc = self.useFixture(
-            nova_fixtures.ServiceFixture(name, host, **kwargs))
+            versionedobjects_fixtures.ServiceFixture(name, host, **kwargs))
         return svc.service
 
     def assertPublicAPISignatures(self, baseinst, inst):
