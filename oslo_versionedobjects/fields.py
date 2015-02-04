@@ -14,6 +14,7 @@
 
 import abc
 import datetime
+import numbers
 
 import iso8601
 import netaddr
@@ -133,13 +134,12 @@ class Field(object):
         self._read_only = read_only
 
     def __repr__(self):
-        args = {
-            'nullable': self._nullable,
-            'default': self._default,
-            }
+        args = [
+            ('nullable', self._nullable),
+            ('default', self._default),
+        ]
         return '%s(%s)' % (self._type.__class__.__name__,
-                           ','.join(['%s=%s' % (k, v)
-                                     for k, v in args.items()]))
+                           ','.join(['%s=%s' % a for a in args]))
 
     @property
     def nullable(self):
@@ -239,9 +239,9 @@ class String(FieldType):
     @staticmethod
     def coerce(obj, attr, value):
         # FIXME(danms): We should really try to avoid the need to do this
-        if isinstance(value, (six.string_types, int, long, float,
+        if isinstance(value, (six.string_types, numbers.Number,
                               datetime.datetime)):
-            return unicode(value)
+            return six.text_type(value)
         else:
             raise ValueError(_('A string is required here, not %s') %
                              value.__class__.__name__)

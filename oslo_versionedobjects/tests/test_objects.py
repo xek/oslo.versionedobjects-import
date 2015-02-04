@@ -561,14 +561,13 @@ class _TestObject(object):
                           'foo', '1.0')
 
     def test_obj_class_from_name_supported_version(self):
-        error = None
+        self.assertRaises(exception.IncompatibleObjectVersion,
+                          base.VersionedObject.obj_class_from_name,
+                          'MyObj', '1.25')
         try:
             base.VersionedObject.obj_class_from_name('MyObj', '1.25')
         except exception.IncompatibleObjectVersion as error:
-            pass
-
-        self.assertIsNotNone(error)
-        self.assertEqual('1.6', error.kwargs['supported'])
+            self.assertEqual('1.6', error.kwargs['supported'])
 
     def test_with_alternate_context(self):
         ctxt1 = context.RequestContext(None, 'foo', 'foo')
@@ -673,7 +672,14 @@ class _TestObject(object):
                 'deleted': False,
             },
         }
-        self.assertEqual(obj.obj_to_primitive(), expected)
+
+        got = obj.obj_to_primitive()
+
+        self.assertItemsEqual(expected['versioned_object.changes'],
+                              got['versioned_object.changes'])
+        del expected['versioned_object.changes']
+        del got['versioned_object.changes']
+        self.assertEqual(got, expected)
 
     def test_contains(self):
         obj = MyObj()
@@ -706,7 +712,7 @@ class _TestObject(object):
         self.assertRaises(AttributeError, obj.get, 'nothing', 3)
 
     def test_object_inheritance(self):
-        base_fields = base.VersionedPersistentObject.fields.keys()
+        base_fields = list(base.VersionedPersistentObject.fields.keys())
         myobj_fields = (['foo', 'bar', 'missing',
                          'readonly', 'rel_object', 'rel_objects'] +
                         base_fields)
@@ -1107,11 +1113,11 @@ class TestObjectSerializer(_BaseTestCase):
         thing = {'key': obj}
         primitive = ser.serialize_entity(self.context, thing)
         self.assertEqual(1, len(primitive))
-        for item in primitive.itervalues():
+        for item in six.itervalues(primitive):
             self.assertNotIsInstance(item, base.VersionedObject)
         thing2 = ser.deserialize_entity(self.context, primitive)
         self.assertEqual(1, len(thing2))
-        for item in thing2.itervalues():
+        for item in six.itervalues(thing2):
             self.assertIsInstance(item, MyObj)
 
         # object-action updates dict case
@@ -1126,10 +1132,9 @@ class TestObjectSerializer(_BaseTestCase):
 # they come with a corresponding version bump in the affected
 # objects
 object_data = {
-    'MyObj': '1.6-b733cfefd8dcf706843d6bce5cd1be22',
-    'MyOwnedObject': '1.0-fec853730bd02d54cc32771dd67f08a0',
-    'TestSubclassedObject': '1.6-6c1976a36987b9832b3183a7d9163655',
-}
+    'MyObj': '1.6-be87d2f10480e3c1b5059560f81795bc',
+    'MyOwnedObject': '1.0-6781195c0b14e44ee1859318e16eca4c',
+    'TestSubclassedObject': '1.6-cb9ea23e78100f0c4a98a4defc8ed577'}
 
 
 object_relationships = {
@@ -1160,7 +1165,8 @@ class TestObjectVersions(test.TestCase):
         """Follow a chain of remotable things down to the original function."""
         if isinstance(thing, classmethod):
             return self._find_remotable_method(cls, thing.__get__(None, cls))
-        elif inspect.ismethod(thing) and hasattr(thing, 'remotable'):
+        elif (inspect.ismethod(thing)
+              or inspect.isfunction(thing)) and hasattr(thing, 'remotable'):
             return self._find_remotable_method(cls, thing.original_fn,
                                                parent_was_remotable=True)
         elif parent_was_remotable:
@@ -1173,12 +1179,13 @@ class TestObjectVersions(test.TestCase):
 
     def _get_fingerprint(self, obj_name):
         obj_class = base.VersionedObject._obj_classes[obj_name][0]
-        fields = obj_class.fields.items()
+        fields = list(obj_class.fields.items())
         fields.sort()
         methods = []
         for name in dir(obj_class):
             thing = getattr(obj_class, name)
-            if inspect.ismethod(thing) or isinstance(thing, classmethod):
+            if inspect.ismethod(thing) or inspect.isfunction(thing) \
+               or isinstance(thing, classmethod):
                 method = self._find_remotable_method(obj_class, thing)
                 if method:
                     methods.append((name, inspect.getargspec(method)))
@@ -1192,18 +1199,17 @@ class TestObjectVersions(test.TestCase):
             relevant_data = (fields, methods, obj_class.child_versions)
         else:
             relevant_data = (fields, methods)
-        fingerprint = '%s-%s' % (obj_class.VERSION,
-                                 hashlib.md5(str(relevant_data)).hexdigest())
+        fingerprint = '%s-%s' % (obj_class.VERSION, hashlib.md5(
+            six.binary_type(repr(relevant_data).encode())).hexdigest())
         return fingerprint
 
     def test_versions(self):
         fingerprints = {}
-        for obj_name in base.VersionedObject._obj_classes:
+        for obj_name in sorted(base.VersionedObject._obj_classes):
             fingerprints[obj_name] = self._get_fingerprint(obj_name)
 
         if os.getenv('GENERATE_HASHES'):
-            file('object_hashes.txt', 'w').write(
-                pprint.pformat(fingerprints))
+            open('object_hashes.txt', 'w').write(pprint.pformat(fingerprints))
             raise test.TestingException(
                 'Generated hashes in object_hashes.txt')
 

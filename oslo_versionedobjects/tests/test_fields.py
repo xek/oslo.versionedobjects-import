@@ -13,6 +13,7 @@
 #    under the License.
 
 import datetime
+import sys
 
 import iso8601
 import netaddr
@@ -73,8 +74,12 @@ class TestString(TestField):
     def setUp(self):
         super(TestField, self).setUp()
         self.field = fields.StringField()
-        self.coerce_good_values = [('foo', 'foo'), (1, '1'), (1L, '1'),
-                                   (True, 'True')]
+        if sys.version < '3':
+            self.coerce_good_values = [('foo', 'foo'), (1, '1'),
+                                       (long(1), '1'), (True, 'True')]
+        else:
+            self.coerce_good_values = [('foo', 'foo'), (1, '1'),
+                                       (True, 'True')]
         self.coerce_bad_values = [None]
         self.to_primitive_values = self.coerce_good_values[0:1]
         self.from_primitive_values = self.coerce_good_values[0:1]

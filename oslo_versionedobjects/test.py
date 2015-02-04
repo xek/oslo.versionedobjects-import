@@ -21,8 +21,11 @@ inline callbacks.
 
 """
 
-import eventlet
-eventlet.monkey_patch(os=False)
+try:
+    import eventlet
+    eventlet.monkey_patch(os=False)
+except ImportError:
+    pass
 
 import copy
 import inspect
