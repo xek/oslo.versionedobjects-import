@@ -28,6 +28,7 @@ from oslo_utils import timeutils
 import six
 from testtools import matchers
 
+from oslo_versionedobjects import _utils as utils
 # from nova.conductor import rpcapi as conductor_rpcapi
 from oslo_versionedobjects import base
 from oslo_versionedobjects import exception
@@ -35,7 +36,6 @@ from oslo_versionedobjects import fields
 # from nova import rpc
 from oslo_versionedobjects import test
 # from nova.tests.unit import fake_notifier
-from oslo_versionedobjects import utils
 
 
 LOG = logging.getLogger(__name__)
